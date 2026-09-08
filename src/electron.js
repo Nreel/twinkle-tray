@@ -1085,6 +1085,7 @@ function readSettings(doProcessSettings = true) {
       for(const time of settings.adjustmentTimes) {
         time.useSunCalc = false
         time.sunCalc = "sunrise"
+        time.offset = 0
       }
       console.log("Upgraded Adjustment Times to v1.16.0 format!")
     } catch(e) {
@@ -5436,7 +5437,7 @@ function getCurrentAdjustmentEvent() {
   let foundEvent = false
   try {
     for (let event of settings.adjustmentTimes) {
-      const eventTime = (event.useSunCalc ? getSunCalcTime(event.sunCalc) : event.time)
+      const eventTime = (event.useSunCalc ? getSunCalcTime(event.sunCalc, event.offset) : event.time)
       const eventValue = Utils.parseTime(eventTime)
 
       // Check if event is not later than current time, last event time, or last found time
@@ -5465,7 +5466,7 @@ function getNextAdjustmentEvent() {
 
   try {
     for (let event of settings.adjustmentTimes) {
-      const eventTime = (event.useSunCalc ? getSunCalcTime(event.sunCalc) : event.time)
+      const eventTime = (event.useSunCalc ? getSunCalcTime(event.sunCalc, event.offset) : event.time)
       const eventValue = Utils.parseTime(eventTime)
 
       // Check if event is later than current time, and less than the last found event
@@ -5534,9 +5535,10 @@ function getCurrentAdjustmentEventLERP() {
   }
 }
 
-function getSunCalcTime(timeName = "solarNoon") {
+function getSunCalcTime(timeName = "solarNoon", offsetMinutes = 0) {
   const localTimes = SunCalc.getTimes(new Date(), settings.adjustmentTimeLatitude, settings.adjustmentTimeLongitude)
   const time = new Date(localTimes[timeName])
+  time.setMinutes(time.getMinutes() + (parseInt(offsetMinutes) || 0))
   return `${time.getHours()}:${time.getMinutes()}`
 }
 
