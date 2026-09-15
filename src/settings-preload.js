@@ -115,6 +115,14 @@ function checkForUpdates() {
     ipc.send('check-for-updates')
 }
 
+function refreshWeather() {
+    ipc.send('refresh-weather')
+}
+
+function requestWeather() {
+    ipc.send('request-weather')
+}
+
 window.reloadReactMonitors = function() { 
     window.dispatchEvent(new CustomEvent('monitorsUpdated', {
         detail: window.allMonitors
@@ -187,6 +195,14 @@ ipc.on('ddc-safety-status', (event, status) => {
     }))
 })
 
+// Weather (cloud coverage) update received
+ipc.on('weather-updated', (event, data) => {
+    window.weatherCloudCover = data
+    window.dispatchEvent(new CustomEvent('weatherUpdated', {
+        detail: data
+    }))
+})
+
 ipc.on('window-history', (event, history) => {
     window.windowHistory = history
     window.dispatchEvent(new CustomEvent('windowHistory', {
@@ -250,6 +266,7 @@ window.addEventListener("DOMContentLoaded", () => {
     requestSettings()
     requestMonitors()
     requestAccent()
+    requestWeather()
 })
 
 // VCP code handling
@@ -274,6 +291,13 @@ function getSunCalcTimes(lat, long, offsetMinutes = 0) {
     return localTimes
 }
 
+function getSunCalcTime(lat, long, timeName = "solarNoon", offsetMinutes = 0) {
+    const localTimes = SunCalc.getTimes(new Date(), lat, long)
+    const time = new Date(localTimes[timeName])
+    time.setMinutes(time.getMinutes() + (parseInt(offsetMinutes) || 0))
+    return `${time.getHours()}:${time.getMinutes()}`
+}
+
 window.ipc = ipc
 window.updateBrightness = updateBrightness
 window.requestMonitors = requestMonitors
@@ -285,6 +309,7 @@ window.requestDDCSafetyStatus = requestDDCSafetyStatus
 window.retryDDCValidation = retryDDCValidation
 window.getUpdate = getUpdate
 window.checkForUpdates = checkForUpdates
+window.refreshWeather = refreshWeather
 window.openURL = openURL
 window.allMonitors = []
 window.lastUpdate = Date.now()
@@ -293,6 +318,7 @@ window.reactReady = false
 window.settings = getArgumentVars().settings
 window.accent = "cyan"
 window.getSunCalcTimes = getSunCalcTimes
+window.getSunCalcTime = getSunCalcTime
 
 window.version = 'v' + getArgumentVars().appVersion
 window.versionTag = getArgumentVars().appVersionTag

@@ -152,7 +152,8 @@ export default class SettingsWindow extends PureComponent {
             addFeatureMonitor: "",
             addFeatureValue: "",
             addFeatureError: false,
-            ddcSafetyStatus: false
+            ddcSafetyStatus: false,
+            weatherCloudCover: null
         }
         this.numMonitors = 0
         this.downKeys = {}
@@ -183,8 +184,12 @@ export default class SettingsWindow extends PureComponent {
         window.addEventListener("settingsUpdated", this.recievedSettings)
         window.addEventListener("ddcSafetyStatus", this.recievedDDCSafetyStatus)
         window.addEventListener("nativeBrightnessKey", this.recievedNativeBrightnessKey)
-        window.addEventListener("localizationUpdated", (e) => { this.setState({ languages: e.detail.languages });  T.setLocalizationData(e.detail.desired, e.detail.default)}); 
+        window.addEventListener("localizationUpdated", (e) => { this.setState({ languages: e.detail.languages }); T.setLocalizationData(e.detail.desired, e.detail.default) });
         window.addEventListener("windowHistory", e => this.setState({ windowHistory: e.detail }))
+        window.addEventListener("weatherUpdated", this.receivedWeather)
+        if (window.weatherCloudCover?.cloudCover != null) {
+            this.setState({ weatherCloudCover: window.weatherCloudCover.cloudCover })
+        }
 
         if (window.isAppX === false) {
             window.addEventListener("updateUpdated", (e) => {
@@ -420,7 +425,7 @@ export default class SettingsWindow extends PureComponent {
     scrollToTop = () => {
         try {
             this.settingsPageRef.current.scrollTop = 0
-        } catch(e) { }
+        } catch (e) { }
     }
 
 
@@ -491,7 +496,7 @@ export default class SettingsWindow extends PureComponent {
                             } />
                             <SettingsChild content={
                                 <div className="calibration-points-menu">
-                                    { this.getMonitorCalibration(monitor.id) }
+                                    {this.getMonitorCalibration(monitor.id)}
                                     <div className="input-row">
                                         <div className="button" onClick={() => this.addCalibrationPoint(monitor.id)}>+ {T.t("GENERIC_CALIBRATION_POINT")}</div>
                                     </div>
@@ -510,7 +515,7 @@ export default class SettingsWindow extends PureComponent {
 
         const remap = this.getRemap(monitorID)
 
-        if(remap) for(const pointIdx in remap.calibration) {
+        if (remap) for (const pointIdx in remap.calibration) {
             const point = remap.calibration[pointIdx]
 
             pointsElems.push(
@@ -524,7 +529,7 @@ export default class SettingsWindow extends PureComponent {
                         <Slider level={point.output} onChange={(value) => this.updateCalibrationPoint(monitorID, pointIdx, "output", value)} scrolling={false} height={"short"} />
                     </div>
                     <div style={{ display: "flex", alignItems: "flex-end" }}>
-                        <a className="add-new button button-primary block" onClick={() => this.deleteCalibrationPoint(monitorID, pointIdx)}>{ deleteIcon } <span>{T.t("GENERIC_DELETE")}</span></a>
+                        <a className="add-new button button-primary block" onClick={() => this.deleteCalibrationPoint(monitorID, pointIdx)}>{deleteIcon} <span>{T.t("GENERIC_DELETE")}</span></a>
                     </div>
                 </div>
             )
@@ -542,8 +547,8 @@ export default class SettingsWindow extends PureComponent {
         }
 
         const remap = this.getRemap(monitorID)
-        if(remap) {
-            if(!remap.calibration) remap.calibration = [];
+        if (remap) {
+            if (!remap.calibration) remap.calibration = [];
             remap.calibration.push({ input: 0, output: 100 })
             this.setState({ remaps: { ...this.state.remaps } })
             window.sendSettings({ remaps: this.state.remaps })
@@ -552,7 +557,7 @@ export default class SettingsWindow extends PureComponent {
 
     updateCalibrationPoint = (monitorID, pointIdx, field, value) => {
         const remap = this.getRemap(monitorID)
-        if(remap && remap.calibration[pointIdx]) {
+        if (remap && remap.calibration[pointIdx]) {
             remap.calibration[pointIdx][field] = value
             this.setState({ remaps: { ...this.state.remaps } })
             window.sendSettings({ remaps: this.state.remaps })
@@ -561,7 +566,7 @@ export default class SettingsWindow extends PureComponent {
 
     deleteCalibrationPoint = (monitorID, pointIdx) => {
         const remap = this.getRemap(monitorID)
-        if(remap && remap.calibration[pointIdx]) {
+        if (remap && remap.calibration[pointIdx]) {
             remap.calibration.splice(pointIdx, 1)
             this.setState({ remaps: { ...this.state.remaps } })
             window.sendSettings({ remaps: this.state.remaps })
@@ -654,8 +659,8 @@ export default class SettingsWindow extends PureComponent {
                 if (time.useSunCalc) {
                     const times = window.getSunCalcTimes(lat, long, time.offset)
                     timeElem = (
-                        <div style={{display: "flex", alignItems: "flex-end", gap: "10px", flex: 1}}>
-                            <select style={{flex: 1}} value={time.sunCalc ?? "solarNoon"} onChange={e => {
+                        <div style={{ display: "flex", alignItems: "flex-end", gap: "10px", flex: 1 }}>
+                            <select style={{ flex: 1 }} value={time.sunCalc ?? "solarNoon"} onChange={e => {
                                 time.sunCalc = e.target.value
                                 this.updateAdjustmentTime(time, index)
                             }}>
@@ -668,8 +673,8 @@ export default class SettingsWindow extends PureComponent {
                                 <option value="dusk">Dusk ({times.dusk})</option>
                                 <option value="night">Night ({times.night})</option>
                             </select>
-                            <div style={{flexShrink: 0}}>
-                                <label style={{textTransform: "capitalize"}}>{T.t("SETTINGS_TIME_SUN_OFFSET")}</label>
+                            <div style={{ flexShrink: 0 }}>
+                                <label style={{ textTransform: "capitalize" }}>{T.t("SETTINGS_TIME_SUN_OFFSET")}</label>
                                 <input type="number" min="-1440" max="1440" step="1" value={time.offset ?? 0} onChange={e => {
                                     time.offset = e.target.value
                                     this.updateAdjustmentTime(time, index)
@@ -682,14 +687,14 @@ export default class SettingsWindow extends PureComponent {
                     <SettingsOption className="win10-has-background" key={index + "_" + time.time} content={
                         <div className="input-row">
                             {timeElem}
-                            <input type="button" className="button button-primary" style={{alignSelf: "flex-end"}} value={T.t("SETTINGS_TIME_REMOVE")} onClick={() => {
+                            <input type="button" className="button button-primary" style={{ alignSelf: "flex-end" }} value={T.t("SETTINGS_TIME_REMOVE")} onClick={() => {
                                 this.state.adjustmentTimes.splice(index, 1)
                                 this.forceUpdate()
                                 this.adjustmentTimesUpdated()
                             }} />
                         </div>
                     } input={
-                        <div className="inputToggle-generic" style={{display: (canShowSunCalc ? "flex" : "none")}}>
+                        <div className="inputToggle-generic" style={{ display: (canShowSunCalc ? "flex" : "none") }}>
                             <input onChange={e => {
                                 time.useSunCalc = e.target.checked
                                 this.updateAdjustmentTime(time, index)
@@ -700,6 +705,45 @@ export default class SettingsWindow extends PureComponent {
                         <SettingsChild>
                             {this.getAdjustmentTimesMonitors(time, index)}
                         </SettingsChild>
+                        <SettingsChild title={
+                            <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                {T.t("SETTINGS_TIME_WEATHER_USE")}
+                                {this.renderWeatherAdjustedTime(time)}
+                                <span style={{ cursor: "help", fontWeight: "bold", padding: "0 4px" }} title={T.t("SETTINGS_TIME_WEATHER_ADJUSTED_NOTE")}>?</span>
+                            </span>
+                        } input={
+                            <div className="inputToggle-generic">
+                                <input onChange={e => {
+                                    time.weatherEnabled = e.target.checked
+                                    this.updateAdjustmentTime(time, index)
+                                }} checked={time.weatherEnabled ?? false} data-checked={time.weatherEnabled ?? false} type="checkbox" />
+                                <div className="text">{(time.weatherEnabled ? T.t("GENERIC_ON") : T.t("GENERIC_OFF"))}</div>
+                            </div>
+                        } />
+                        {time.weatherEnabled ? (
+                            <SettingsChild content={
+                                <div style={{ display: "flex", gap: "10px", alignItems: "flex-start", flexWrap: "wrap" }}>
+                                    <div style={{ flex: 1, minWidth: "120px" }}>
+                                        <label style={{ textTransform: "capitalize" }}>{T.t("SETTINGS_TIME_WEATHER_CLOUD")}</label>
+                                        <input type="number" min="0" max="100" step="1" value={time.weatherCloudThreshold ?? 50} onChange={e => {
+                                            time.weatherCloudThreshold = e.target.value
+                                            this.updateAdjustmentTime(time, index)
+                                        }} />
+                                    </div>
+                                    <div style={{ flex: 1, minWidth: "120px" }}>
+                                        <label style={{ textTransform: "capitalize" }}>{T.t("SETTINGS_TIME_WEATHER_OFFSET")}</label>
+                                        <input type="number" min="-1440" max="1440" step="1" value={time.weatherOffsetMinutes ?? 0} onChange={e => {
+                                            time.weatherOffsetMinutes = e.target.value
+                                            this.updateAdjustmentTime(time, index)
+                                        }} />
+                                    </div>
+                                    <div style={{ flex: 1, minWidth: "120px", display: "flex" }}>
+                                        <label style={{ marginRight: "5px", display: "flex", alignItems: "center", justifyContent: "center" }}>{T.t("SETTINGS_TIME_WEATHER_CURRENT")}</label>
+                                        <div>{this.state.weatherCloudCover != null ? `${this.state.weatherCloudCover}%` : "—"}</div>
+                                    </div>
+                                </div>
+                            } />
+                        ) : null}
                     </SettingsOption>
                 )
             })
@@ -749,6 +793,34 @@ export default class SettingsWindow extends PureComponent {
         this.adjustmentTimesUpdated()
     }
 
+    formatMinutesAsTime = (minutes) => {
+        const total = ((minutes % 1440) + 1440) % 1440
+        const h = String(Math.floor(total / 60)).padStart(2, "0")
+        const m = String(total % 60).padStart(2, "0")
+        return `${h}:${m}`
+    }
+
+    getWeatherAdjustedTime = (time) => {
+        const offset = parseInt(time.weatherOffsetMinutes) || 0
+        let base = time.time
+        if (time.useSunCalc) {
+            const lat = parseFloat(window.settings.adjustmentTimeLatitude) ?? 0
+            const long = parseFloat(window.settings.adjustmentTimeLongitude) ?? 0
+            base = window.getSunCalcTime(lat, long, time.sunCalc ?? "solarNoon", time.offset)
+        }
+        if (!base) return null
+        const parts = String(base).split(":").map(Number)
+        if (parts.length !== 2 || isNaN(parts[0]) || isNaN(parts[1])) return null
+        return this.formatMinutesAsTime((parts[0] * 60 + parts[1]) + offset)
+    }
+
+    renderWeatherAdjustedTime = (time) => {
+        if (!time.weatherEnabled) return null
+        const adjusted = this.getWeatherAdjustedTime(time)
+        if (!adjusted) return null
+        return (<span style={{ opacity: 0.75, whiteSpace: "nowrap", alignSelf: "center" }}>({adjusted})</span>)
+    }
+
     getHotkeyList = () => {
 
         const deleteHotkeyAction = (idx, actionIdx) => {
@@ -756,7 +828,7 @@ export default class SettingsWindow extends PureComponent {
                 this.state.hotkeys[idx].actions.splice(actionIdx, 1)
                 window.sendSettings({ hotkeys: this.state.hotkeys.slice() })
                 this.forceUpdate()
-            } catch(e) {
+            } catch (e) {
                 console.log(e)
             }
         }
@@ -792,18 +864,18 @@ export default class SettingsWindow extends PureComponent {
                         {this.getHotkeyStatusIcon(hotkey)}
                     </div>
                 } expandable={true} input={
-                    <a className="button button-primary" onClick={() => this.deleteHotkey(idx)}>{ deleteIcon } <span>{T.t("GENERIC_DELETE")}</span></a>
+                    <a className="button button-primary" onClick={() => this.deleteHotkey(idx)}>{deleteIcon} <span>{T.t("GENERIC_DELETE")}</span></a>
                 }>
-                    { hotkey.actions?.map((action, actionIdx) => {
+                    {hotkey.actions?.map((action, actionIdx) => {
                         return (
                             <SettingsChild key={`${idx}-${actionIdx}`}>
                                 <ActionItem key={`${idx}-${actionIdx}`} title={`${T.t("SETTINGS_HOTKEY_ACTION")} #${actionIdx + 1}`} action={action} onChange={updatedAction => this.updateHotkeyAction(updatedAction, idx, actionIdx)} onDelete={() => { deleteHotkeyAction(idx, actionIdx) }} monitors={this.state.monitors} monitorNames={this.state.names} />
                             </SettingsChild>
                         )
-                    }) }
+                    })}
                     <SettingsChild>
                         <a className="button full-width" onClick={() => {
-                            if(!hotkey.actions?.length) {
+                            if (!hotkey.actions?.length) {
                                 hotkey.actions = []
                             }
                             hotkey.actions.push(Object.assign({}, defaultAction))
@@ -817,7 +889,7 @@ export default class SettingsWindow extends PureComponent {
 
     recievedNativeBrightnessKey = (e) => {
         const idx = this.state.hotkeys.findIndex(hotkey => hotkey.id === this.recordingHotkeyId)
-        if(idx < 0) return;
+        if (idx < 0) return;
         this.downKeys = {}
         const hotkey = this.state.hotkeys[idx]
         hotkey.accelerator = e.detail
@@ -1002,7 +1074,7 @@ export default class SettingsWindow extends PureComponent {
     }
 
     getSDRMonitorsSettings = () => {
-                try {
+        try {
             if (this.state.monitors == undefined || Object.keys(this.state.monitors).length == 0) {
                 return (<SettingsChild title={T.t("GENERIC_NO_COMPATIBLE_DISPLAYS")} />)
             } else {
@@ -1148,9 +1220,9 @@ export default class SettingsWindow extends PureComponent {
     setSkipRestoreMonitor = (value, monitor) => {
         const userSkipReapply = this.state.rawSettings?.userSkipReapply
         const index = this.state.rawSettings?.userSkipReapply?.indexOf(monitor.hwid[1])
-        if(index >= 0 && !value) {
+        if (index >= 0 && !value) {
             userSkipReapply.splice(index, 1)
-        } else if(index === -1 && value) {
+        } else if (index === -1 && value) {
             userSkipReapply.push(monitor.hwid[1])
         }
         this.setSetting("userSkipReapply", userSkipReapply)
@@ -1225,6 +1297,10 @@ export default class SettingsWindow extends PureComponent {
         this.setState({ ddcSafetyStatus: e.detail || false })
     }
 
+    receivedWeather = (e) => {
+        this.setState({ weatherCloudCover: e.detail?.cloudCover ?? null })
+    }
+
 
     isSection = (name) => {
         if (this.state.activePage == name) {
@@ -1243,7 +1319,10 @@ export default class SettingsWindow extends PureComponent {
             monitors: {},
             useSunCalc: false,
             sunCalc: "sunrise",
-            offset: 0
+            offset: 0,
+            weatherEnabled: false,
+            weatherCloudThreshold: 50,
+            weatherOffsetMinutes: 0
         })
         this.forceUpdate()
         this.adjustmentTimesUpdated()
@@ -1262,7 +1341,7 @@ export default class SettingsWindow extends PureComponent {
 
         const newState = {}
         newState[setting] = value
-        this.setState({...newState, ...{rawSettings: {...this.state.rawSettings, ...{[setting]: value} } } })
+        this.setState({ ...newState, ...{ rawSettings: { ...this.state.rawSettings, ...{ [setting]: value } } } })
         window.sendSettings(newState)
     }
 
@@ -1294,7 +1373,7 @@ export default class SettingsWindow extends PureComponent {
                                 <div className="pageSection">
 
                                     <div className="sectionTitle">{T.t("SETTINGS_GENERAL_TITLE")}</div>
-                                    
+
                                     <SettingsOption title={T.t("SETTINGS_GENERAL_STARTUP")} input={this.renderToggle("openAtLogin")} />
 
                                     <SettingsOption title={T.t("SETTINGS_GENERAL_BRIGHTNESS_STARTUP_TITLE")} description={T.t("SETTINGS_GENERAL_BRIGHTNESS_STARTUP_DESC")} input={this.renderToggle("brightnessAtStartup")} />
@@ -1365,7 +1444,7 @@ export default class SettingsWindow extends PureComponent {
                                         <SettingsChild title={"Win32-DisplayConfig"} input={this.renderToggle("disableWin32", true, "right", true)} />
                                     </SettingsOption>
 
-                                   <SettingsOption title={T.t("SETTINGS_GENERAL_LEGACY_DDC_TITLE")} description={T.t("SETTINGS_GENERAL_LEGACY_DDC_DESC")} input={
+                                    <SettingsOption title={T.t("SETTINGS_GENERAL_LEGACY_DDC_TITLE")} description={T.t("SETTINGS_GENERAL_LEGACY_DDC_DESC")} input={
                                         <div className="inputToggle-generic" data-textside={"right"}>
                                             <input onChange={(e) => { this.setSetting("preferredDDCCIMethod", (e.target.checked ? "legacy" : "accurate")) }} checked={(this.state.rawSettings.preferredDDCCIMethod == "legacy")} data-checked={(this.state.rawSettings.preferredDDCCIMethod == "legacy")} type="checkbox" />
                                             <div className="text">{((this.state.rawSettings.preferredDDCCIMethod == "legacy") ? T.t("GENERIC_ON") : T.t("GENERIC_OFF"))}</div>
@@ -1373,11 +1452,11 @@ export default class SettingsWindow extends PureComponent {
                                     } />
 
                                     <SettingsOption title={T.t("SETTINGS_GENERAL_OVERLAY_TITLE")} description={T.t("SETTINGS_GENERAL_OVERLAY_DESC")} input={
-                                    <select value={window.settings.defaultOverlayType} onChange={(e) => this.setSetting("defaultOverlayType", e.target.value)}>
-                                        <option value="disabled">{T.t("SETTINGS_GENERAL_DIS_OVERLAY_TITLE")}</option>
-                                        <option value="safe">{T.t("SETTINGS_GENERAL_ON_OVERLAY_TITLE")}</option>
-                                        <option value="aggressive">{T.t("SETTINGS_GENERAL_FORCE_OVERLAY_TITLE")}</option>
-                                    </select>
+                                        <select value={window.settings.defaultOverlayType} onChange={(e) => this.setSetting("defaultOverlayType", e.target.value)}>
+                                            <option value="disabled">{T.t("SETTINGS_GENERAL_DIS_OVERLAY_TITLE")}</option>
+                                            <option value="safe">{T.t("SETTINGS_GENERAL_ON_OVERLAY_TITLE")}</option>
+                                            <option value="aggressive">{T.t("SETTINGS_GENERAL_FORCE_OVERLAY_TITLE")}</option>
+                                        </select>
                                     } expandable={true}>
                                         <SettingsChild>
                                             <p><i>
@@ -1420,17 +1499,26 @@ export default class SettingsWindow extends PureComponent {
                                             <div style={{ "display": "flex" }}>
                                                 <div style={{ marginRight: "6px", flex: 1 }}>
                                                     <label style={{ "textTransform": "capitalize" }}>{T.t("SETTINGS_TIME_LAT")}</label>
-                                                    <input type="number" min="-90" max="90" value={window.settings.adjustmentTimeLatitude * 1} onChange={(e) => this.setSetting("adjustmentTimeLatitude", e.target.value)} style={{width: "100%", boxSizing: "border-box"}} />
+                                                    <input type="number" min="-90" max="90" value={window.settings.adjustmentTimeLatitude * 1} onChange={(e) => this.setSetting("adjustmentTimeLatitude", e.target.value)} style={{ width: "100%", boxSizing: "border-box" }} />
                                                 </div>
-                                                <div style={{flex: 1}}>
+                                                <div style={{ flex: 1 }}>
                                                     <label style={{ "textTransform": "capitalize" }}>{T.t("SETTINGS_TIME_LONG")}</label>
-                                                    <input type="number" min="-180" max="180" value={window.settings.adjustmentTimeLongitude * 1} onChange={(e) => this.setSetting("adjustmentTimeLongitude", e.target.value)} style={{width: "100%", boxSizing: "border-box"}} />
+                                                    <input type="number" min="-180" max="180" value={window.settings.adjustmentTimeLongitude * 1} onChange={(e) => this.setSetting("adjustmentTimeLongitude", e.target.value)} style={{ width: "100%", boxSizing: "border-box" }} />
                                                 </div>
                                                 {/* I'll write better CSS later, I promise. */}
-                                                <div><label style={{opacity:0}}>Get {T.t("SETTINGS_TIME_SUN_GET")}</label><input type="button" className="button" onClick={() => window.ipc.send("get-coordinates")} value={T.t("SETTINGS_TIME_SUN_GET")} style={{lineHeight:"1.3",padding:(document.body.dataset.isWin11 === 'true' ? "9px" : "8px"),marginLeft:"6px"}} /></div>
+                                                <div><label style={{ opacity: 0 }}>Get {T.t("SETTINGS_TIME_SUN_GET")}</label><input type="button" className="button" onClick={() => window.ipc.send("get-coordinates")} value={T.t("SETTINGS_TIME_SUN_GET")} style={{ lineHeight: "1.3", padding: (document.body.dataset.isWin11 === 'true' ? "9px" : "8px"), marginLeft: "6px" }} /></div>
                                             </div>
                                         </SettingsChild>
                                     </SettingsOption>
+                                    <SettingsOption title={
+                                        <span>{T.t("SETTINGS_TIME_WEATHER_INTERVAL")} <span style={{ cursor: "help", fontWeight: "bold", padding: "0 4px" }} title={T.t("SETTINGS_TIME_WEATHER_INTERVAL_NOTE")}>?</span></span>
+                                    } description={T.t("SETTINGS_TIME_WEATHER_INTERVAL_DESC")} input={
+                                        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                                            <input type="number" min="5" max="1440" step="1" value={(window.settings.weatherCheckIntervalMinutes ?? 30) * 1} onChange={(e) => this.setSetting("weatherCheckIntervalMinutes", e.target.value)} />
+                                            <span style={{ whiteSpace: "nowrap", opacity: 0.8, alignSelf: "center" }}>{T.t("SETTINGS_TIME_WEATHER_CURRENT")}: {this.state.weatherCloudCover != null ? `${this.state.weatherCloudCover}%` : "—"}</span>
+                                            <input type="button" className="button" value={T.t("SETTINGS_TIME_WEATHER_CHECK_NOW")} onClick={() => window.refreshWeather()} />
+                                        </div>
+                                    } />
                                     <SettingsOption title={T.t("SETTINGS_TIME_INDIVIDUAL_TITLE")} description={T.t("SETTINGS_TIME_INDIVIDUAL_DESC")} input={this.renderToggle("adjustmentTimeIndividualDisplays")} />
                                     <SettingsOption title={T.t("SETTINGS_TIME_ANIMATE_TITLE")} description={T.t("SETTINGS_TIME_ANIMATE_DESC")} input={this.renderToggle("adjustmentTimeAnimate")} />
                                     <SettingsOption title={T.t("SETTINGS_TIME_TRANSITON_TITLE")} description={T.t("SETTINGS_TIME_TRANSITON_DESC")} input={
@@ -1449,17 +1537,17 @@ export default class SettingsWindow extends PureComponent {
                                     <div className="sectionTitle">{T.t("SETTINGS_TIME_IDLE_TITLE")}</div>
                                     <SettingsOption title={T.t("SETTINGS_TIME_IDLE_TITLE")} description={T.t("SETTINGS_TIME_IDLE_DESC")} input={this.renderToggle("detectIdleTimeEnabled")}>
                                         <SettingsChild content={
-                                                <div style={{ "display": "flex" }}>
-                                                    <div style={{ "marginRight": "6px" }}>
-                                                        <label style={{ "textTransform": "capitalize" }}>{T.t("GENERIC_MINUTES")}</label>
-                                                        <input type="number" min="0" max="600" value={window.settings.detectIdleTimeMinutes * 1} onChange={(e) => this.setSetting("detectIdleTimeMinutes", e.target.value)} />
-                                                    </div>
-                                                    <div>
-                                                        <label style={{ "textTransform": "capitalize" }}>{T.t("GENERIC_SECONDS")}</label>
-                                                        <input type="number" min="0" max="600" value={window.settings.detectIdleTimeSeconds * 1} onChange={(e) => this.setSetting("detectIdleTimeSeconds", e.target.value)} />
-                                                    </div>
+                                            <div style={{ "display": "flex" }}>
+                                                <div style={{ "marginRight": "6px" }}>
+                                                    <label style={{ "textTransform": "capitalize" }}>{T.t("GENERIC_MINUTES")}</label>
+                                                    <input type="number" min="0" max="600" value={window.settings.detectIdleTimeMinutes * 1} onChange={(e) => this.setSetting("detectIdleTimeMinutes", e.target.value)} />
                                                 </div>
-                                            } />
+                                                <div>
+                                                    <label style={{ "textTransform": "capitalize" }}>{T.t("GENERIC_SECONDS")}</label>
+                                                    <input type="number" min="0" max="600" value={window.settings.detectIdleTimeSeconds * 1} onChange={(e) => this.setSetting("detectIdleTimeSeconds", e.target.value)} />
+                                                </div>
+                                            </div>
+                                        } />
                                     </SettingsOption>
                                     <SettingsOption title={T.t("SETTINGS_TIME_IDLE_FS_TITLE")} description={T.t("SETTINGS_TIME_IDLE_FS_DESC")} input={this.renderToggle("detectIdleCheckFullscreen")} />
                                     <SettingsOption title={T.t("SETTINGS_TIME_IDLE_MEDIA_TITLE")} description={T.t("SETTINGS_TIME_IDLE_MEDIA_DESC")} input={this.renderToggle("detectIdleMedia")} />
@@ -1541,7 +1629,7 @@ export default class SettingsWindow extends PureComponent {
                                         </select>
                                     }>
                                         <SettingsChild description={<>⚠️ <em>{T.t("SETTINGS_FEATURES_POWER_WARNING")}</em></>} />
-                                    </SettingsOption>                                
+                                    </SettingsOption>
                                 </div>
                             </SettingsPage>
 
@@ -1578,11 +1666,11 @@ export default class SettingsWindow extends PureComponent {
                                     <SettingsOption title={T.t("SETTINGS_GENERAL_SCROLL_TITLE")} description={T.t("SETTINGS_GENERAL_SCROLL_DESC")} input={this.renderToggle("scrollShortcut")}>
                                         <SettingsChild title={T.t("SETTINGS_HOTKEYS_SCROLL_AMOUNT")} className="win10-stack-input" input={
                                             <input type="number" min={1} max={100} step={1}
-                                            value={this.state.rawSettings.scrollShortcutAmount} onChange={e => {
-                                                this.state.rawSettings.scrollShortcutAmount = parseInt(e.target.value)
-                                                window.sendSettings({ scrollShortcutAmount: parseInt(e.target.value) })
-                                                this.forceUpdate()
-                                            }} />
+                                                value={this.state.rawSettings.scrollShortcutAmount} onChange={e => {
+                                                    this.state.rawSettings.scrollShortcutAmount = parseInt(e.target.value)
+                                                    window.sendSettings({ scrollShortcutAmount: parseInt(e.target.value) })
+                                                    this.forceUpdate()
+                                                }} />
                                         } />
                                         <SettingsChild title={T.t("SETTINGS_HOTKEYS_INVERT_SCROLL_TITLE")} description={T.t("SETTINGS_HOTKEYS_INVERT_SCROLL_DESC")} input={this.renderToggle("invertScroll")} />
                                     </SettingsOption>
@@ -1601,13 +1689,13 @@ export default class SettingsWindow extends PureComponent {
                                         <SettingsChild description={
                                             <div>
                                                 <i>{T.t("SETTINGS_HOTKEYS_TOD_NOTE")}</i>
-                                                { (this.state.rawSettings?.sleepAction === "ddcci" || this.state.rawSettings?.sleepAction === "ps_ddcci" ? (<div className="ddc-warning"><br />⚠️ <em>{T.t("GENERIC_DDC_WARNING")}</em></div>) : null) }
+                                                {(this.state.rawSettings?.sleepAction === "ddcci" || this.state.rawSettings?.sleepAction === "ps_ddcci" ? (<div className="ddc-warning"><br />⚠️ <em>{T.t("GENERIC_DDC_WARNING")}</em></div>) : null)}
                                             </div>
                                         } />
                                     </SettingsOption>
                                     <p></p>
 
-                                    
+
                                 </div>
 
                                 <div className="pageSection">
@@ -1654,31 +1742,31 @@ export default class SettingsWindow extends PureComponent {
                             </SettingsPage>
 
                             <SettingsPage current={this.state.activePage} id="debug">
-    
+
 
                                 <div className="pageSection debug">
                                     <SettingsOption title="All Displays" expandable={true} forceExpandable={true} input={<><a className="button" onClick={() => { window.requestMonitors(true) }}>Refresh Monitors</a> <a className="button" onClick={() => window.ipc.send('flush-vcp-cache')}>Clear Cache</a></>}>
                                         <SettingsChild description={this.getDebugMonitors()} />
                                     </SettingsOption>
-                                    
+
                                     <SettingsOption title="Save Report" description={"Save a text file with information about your monitors and settings for debugging."} input={<><a className="button" onClick={() => window.ipc.send('save-report')}>Generate Report</a></>} />
 
                                     <SettingsOption title="Settings" description={window.settingsPath} input={<a className="button" onClick={() => window.ipc.send('open-settings-file')}>Open Settings</a>} expandable={true} forceExpandable={true}>
                                         <SettingsChild>
                                             <p style={{ whiteSpace: "pre-wrap", fontFamily: '"Cascadia Code", "Consolas", sans-serif' }}>{JSON.stringify(this.state.rawSettings, undefined, 2)}</p>
                                         </SettingsChild>
-                                    </SettingsOption>     
-                                    
+                                    </SettingsOption>
+
                                     <SettingsOption title="Raw Monitor Data" expandable={true} forceExpandable={true}>
                                         <SettingsChild>
                                             <pre style={{ whiteSpace: "pre-wrap" }}>{JSON.stringify(window.allMonitors, undefined, 2)}</pre>
                                         </SettingsChild>
-                                    </SettingsOption>                               
+                                    </SettingsOption>
                                 </div>
 
                                 <div className="pageSection debug">
                                     <div className="sectionTitle">Other</div>
-    
+
                                     <SettingsOption title="Dev Mode" input={this.renderToggle("isDev")} />
                                     <SettingsOption title="UDP Server" expandable={true}>
                                         <SettingsChild title="Enable UDP server" input={this.renderToggle("udpEnabled")} />
@@ -1687,7 +1775,7 @@ export default class SettingsWindow extends PureComponent {
                                         <SettingsChild title={`Active port: ${window.settings.udpPortActive}`} />
                                         <SettingsChild title={`UDP key: ${window.settings.udpKey}`} />
                                     </SettingsOption>
-                                    
+
                                     <SettingsOption title="DDC/CI Scanning Mode" description={`Last test result: ${settings?.lastDetectedDDCCIMethod}`} input={
                                         <select value={this.state.rawSettings.preferredDDCCIMethod} onChange={e => {
                                             window.sendSettings({ preferredDDCCIMethod: e.target.value })
@@ -1708,16 +1796,16 @@ export default class SettingsWindow extends PureComponent {
                                         {this.getHDRMonitors()}
                                     </SettingsOption>
 
-                                    <SettingsOption title="Idle restore time" description="How long (in seconds) after going idle to rescan displays and apply last known brightness." input={<input type="number" min="0" max="60" value={this.state.rawSettings.idleRestoreSeconds * 1} onChange={(e) => this.setSetting("idleRestoreSeconds", e.target.value)} /> } />
+                                    <SettingsOption title="Idle restore time" description="How long (in seconds) after going idle to rescan displays and apply last known brightness." input={<input type="number" min="0" max="60" value={this.state.rawSettings.idleRestoreSeconds * 1} onChange={(e) => this.setSetting("idleRestoreSeconds", e.target.value)} />} />
 
-                                    <SettingsOption title="Wake restore time" description="How long (in seconds) after waking from sleep to rescan displays and apply last known brightness." input={<input type="number" min="0" max="60" value={this.state.rawSettings.wakeRestoreSeconds * 1} onChange={(e) => this.setSetting("wakeRestoreSeconds", e.target.value)} /> } />
+                                    <SettingsOption title="Wake restore time" description="How long (in seconds) after waking from sleep to rescan displays and apply last known brightness." input={<input type="number" min="0" max="60" value={this.state.rawSettings.wakeRestoreSeconds * 1} onChange={(e) => this.setSetting("wakeRestoreSeconds", e.target.value)} />} />
 
-                                    <SettingsOption title="Hardware change time" description="How long (in seconds) after detecting a hardware change to rescan displays and apply last known brightness." input={<input type="number" min="0" max="60" value={this.state.rawSettings.hardwareRestoreSeconds * 1} onChange={(e) => this.setSetting("hardwareRestoreSeconds", e.target.value)} /> } />
+                                    <SettingsOption title="Hardware change time" description="How long (in seconds) after detecting a hardware change to rescan displays and apply last known brightness." input={<input type="number" min="0" max="60" value={this.state.rawSettings.hardwareRestoreSeconds * 1} onChange={(e) => this.setSetting("hardwareRestoreSeconds", e.target.value)} />} />
 
-                                    <SettingsOption title="VCP read delay" description="How long (in miliseconds) to delay returning a VCP code value. This can help some displays not return random errors." input={<input type="number" min="0" max="200" value={this.state.rawSettings.checkVCPWaitMS * 1} onChange={(e) => this.setSetting("checkVCPWaitMS", e.target.value)} /> } />
+                                    <SettingsOption title="VCP read delay" description="How long (in miliseconds) to delay returning a VCP code value. This can help some displays not return random errors." input={<input type="number" min="0" max="200" value={this.state.rawSettings.checkVCPWaitMS * 1} onChange={(e) => this.setSetting("checkVCPWaitMS", e.target.value)} />} />
 
-                                    <SettingsOption title="Flyout scroll amount" description="How large of steps to take when scrolling over a slider." input={<input type="number" min="1" max="10" value={this.state.rawSettings.scrollFlyoutAmount * 1} onChange={(e) => this.setSetting("scrollFlyoutAmount", e.target.value)} /> } />
-                                    
+                                    <SettingsOption title="Flyout scroll amount" description="How large of steps to take when scrolling over a slider." input={<input type="number" min="1" max="10" value={this.state.rawSettings.scrollFlyoutAmount * 1} onChange={(e) => this.setSetting("scrollFlyoutAmount", e.target.value)} />} />
+
                                     <SettingsOption title="Disable theme update detection" description="Prevent the app from detecting theme/wallpaper changes from Windows. This may help if a 3rd party app is frequently changing the theme, increasing CPU usage." input={this.renderToggle("disableThemeChanges")} />
                                     <SettingsOption title="Restart app on wake" input={this.renderToggle("restartOnWake")} />
                                     <SettingsOption title="Disable Auto Refresh" description="Prevent last known brightness from read after certain hardware/user events." input={this.renderToggle("disableAutoRefresh")} />
@@ -1824,7 +1912,7 @@ function AppProfile(props) {
     if (!profile.monitors) profile.monitors = {};
 
     return (
-        <SettingsOption title={<input type="text" placeholder={T.t("SETTINGS_PROFILES_NAME")} value={profile.name} onChange={e => updateValue("name", e.target.value)} style={{width:"100%"}}></input>} expandable={true} input={<a className="add-new button button-primary block" onClick={onDelete}>{ deleteIcon } <span>{T.t("GENERIC_DELETE")}</span></a>} className="appProfileItem win10-has-background" key={profile.id}>
+        <SettingsOption title={<input type="text" placeholder={T.t("SETTINGS_PROFILES_NAME")} value={profile.name} onChange={e => updateValue("name", e.target.value)} style={{ width: "100%" }}></input>} expandable={true} input={<a className="add-new button button-primary block" onClick={onDelete}>{deleteIcon} <span>{T.t("GENERIC_DELETE")}</span></a>} className="appProfileItem win10-has-background" key={profile.id}>
             <SettingsChild content={
                 <>
                     <div className="feature-toggle-row">
@@ -1851,7 +1939,7 @@ function AppProfile(props) {
 
                     <label>{T.t("SETTINGS_PROFILES_APP_PATH")}</label>
                     <p>{T.t("SETTINGS_PROFILES_APP_DESC")}</p>
-                    <input type="text" placeholder={T.t("SETTINGS_PROFILES_APP_PATH")} value={profile.path} onChange={e => updateValue("path", e.target.value)} style={{width:"100%"}}></input>
+                    <input type="text" placeholder={T.t("SETTINGS_PROFILES_APP_PATH")} value={profile.path} onChange={e => updateValue("path", e.target.value)} style={{ width: "100%" }}></input>
                     <label>{T.t("SETTINGS_PROFILES_OVERLAY_TITLE")}</label>
                     <p>{T.t("SETTINGS_PROFILES_OVERLAY_DESC")}</p>
                     <select value={profile.overlayType} onChange={e => updateValue("overlayType", e.target.value)}>
@@ -1881,12 +1969,12 @@ function ActionItem(props) {
 
     const getHotkeyMonitors = () => {
         try {
-            if(action.allMonitors) return (null)
+            if (action.allMonitors) return (null)
             if (monitors == undefined || Object.keys(monitors).length == 0) {
-                return (<div className="no-displays-message option-description" style={{lineHeight:1.35}}>{T.t("GENERIC_NO_COMPATIBLE_DISPLAYS")}</div>)
+                return (<div className="no-displays-message option-description" style={{ lineHeight: 1.35 }}>{T.t("GENERIC_NO_COMPATIBLE_DISPLAYS")}</div>)
             } else {
                 return Object.values(monitors).map((monitor, index) => {
-                    if(monitor.type === "none") return null;
+                    if (monitor.type === "none") return null;
                     return (
                         <div key={monitor.key} className="feature-toggle-row">
                             <input onChange={e => {
@@ -1907,7 +1995,7 @@ function ActionItem(props) {
 
     const getHotkeyInput = () => {
         if (action.type === "off") {
-            return (<div className="input-row"><p style={{lineHeight: 1.2}}>{T.t("SETTINGS_HOTKEY_OFF_WARN")}</p></div>)
+            return (<div className="input-row"><p style={{ lineHeight: 1.2 }}>{T.t("SETTINGS_HOTKEY_OFF_WARN")}</p></div>)
         } else if (action.type === "refresh") {
             return null
         } else {
@@ -2001,10 +2089,10 @@ function ActionItem(props) {
 
     return (
         <div className="action-item-base">
-            { props.onDelete ?
+            {props.onDelete ?
                 <div className=""><a className="button button-primary" onClick={() => props.onDelete?.(action)}>{deleteIcon} <span>{props.title ?? T.t("SETTINGS_HOTKEY_ACTION")}</span></a><br /><br /></div>
-            : <div className="option-title">{props.title ?? T.t("SETTINGS_HOTKEY_ACTION")}</div> }
-            
+                : <div className="option-title">{props.title ?? T.t("SETTINGS_HOTKEY_ACTION")}</div>}
+
             <div className="input-row">
                 <div className="hotkey-monitors-list" style={{ display: (showDisplaysList ? "block" : "none") }}>
                     <div className="input-row">
