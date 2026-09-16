@@ -731,11 +731,28 @@ export default class SettingsWindow extends PureComponent {
                                         }} />
                                     </div>
                                     <div style={{ flex: 1, minWidth: "120px" }}>
-                                        <label style={{ textTransform: "capitalize" }}>{T.t("SETTINGS_TIME_WEATHER_OFFSET")}</label>
-                                        <input type="number" min="-1440" max="1440" step="1" value={time.weatherOffsetMinutes ?? 0} onChange={e => {
-                                            time.weatherOffsetMinutes = e.target.value
+                                        <label style={{ textTransform: "capitalize" }}>{T.t("SETTINGS_TIME_WEATHER_OFFSET_TYPE")}</label>
+                                        <select value={time.weatherOffsetType ?? "time"} onChange={e => {
+                                            time.weatherOffsetType = e.target.value
                                             this.updateAdjustmentTime(time, index)
-                                        }} />
+                                        }}>
+                                            <option value="time">{T.t("SETTINGS_TIME_WEATHER_OFFSET_TYPE_TIME")}</option>
+                                            <option value="brightness">{T.t("SETTINGS_TIME_WEATHER_OFFSET_TYPE_BRIGHTNESS")}</option>
+                                        </select>
+                                    </div>
+                                    <div style={{ flex: 1, minWidth: "120px" }}>
+                                        <label style={{ textTransform: "capitalize" }}>{(time.weatherOffsetType === "brightness" ? T.t("SETTINGS_TIME_WEATHER_OFFSET_BRIGHTNESS") : T.t("SETTINGS_TIME_WEATHER_OFFSET"))}</label>
+                                        {time.weatherOffsetType === "brightness" ? (
+                                            <input type="number" min="-100" max="100" step="1" value={time.weatherOffsetBrightness ?? 0} onChange={e => {
+                                                time.weatherOffsetBrightness = e.target.value
+                                                this.updateAdjustmentTime(time, index)
+                                            }} />
+                                        ) : (
+                                            <input type="number" min="-1440" max="1440" step="1" value={time.weatherOffsetMinutes ?? 0} onChange={e => {
+                                                time.weatherOffsetMinutes = e.target.value
+                                                this.updateAdjustmentTime(time, index)
+                                            }} />
+                                        )}
                                     </div>
                                     <div style={{ flex: 1, minWidth: "120px", display: "flex" }}>
                                         <label style={{ marginRight: "5px", display: "flex", alignItems: "center", justifyContent: "center" }}>{T.t("SETTINGS_TIME_WEATHER_CURRENT")}</label>
@@ -815,7 +832,7 @@ export default class SettingsWindow extends PureComponent {
     }
 
     renderWeatherAdjustedTime = (time) => {
-        if (!time.weatherEnabled) return null
+        if (!time.weatherEnabled || time.weatherOffsetType === "brightness") return null
         const adjusted = this.getWeatherAdjustedTime(time)
         if (!adjusted) return null
         return (<span style={{ opacity: 0.75, whiteSpace: "nowrap", alignSelf: "center" }}>({adjusted})</span>)
@@ -1322,7 +1339,9 @@ export default class SettingsWindow extends PureComponent {
             offset: 0,
             weatherEnabled: false,
             weatherCloudThreshold: 50,
-            weatherOffsetMinutes: 0
+            weatherOffsetType: "time",
+            weatherOffsetMinutes: 0,
+            weatherOffsetBrightness: 0
         })
         this.forceUpdate()
         this.adjustmentTimesUpdated()

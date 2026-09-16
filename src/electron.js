@@ -4701,10 +4701,10 @@ function createSettings() {
   const { width, height } = screen.getPrimaryDisplay().workAreaSize
 
   settingsWindow = new BrowserWindow({
-    width: (width >= 1200 ? 1024 : 600),
+    width: (width >= 1400 ? 1224 : 800),
     height: (height >= 768 ? 720 : 500),
     minHeight: 450,
-    minWidth: 720,
+    minWidth: 820,
     show: false,
     maximizable: true,
     resizable: true,
@@ -5445,7 +5445,7 @@ function idleCheckShort() {
 // Resolve an event's effective time, including any weather-dependent offset.
 function getEventTime(event) {
   const baseTime = (event.useSunCalc ? getSunCalcTime(event.sunCalc, event.offset) : event.time)
-  if (event.weatherEnabled && typeof getCloudCover() === "number" && getCloudCover() > event.weatherCloudThreshold) {
+  if (event.weatherEnabled && event.weatherOffsetType !== "brightness" && typeof getCloudCover() === "number" && getCloudCover() > event.weatherCloudThreshold) {
     const offset = parseInt(event.weatherOffsetMinutes) || 0
     if (offset) {
       const parts = baseTime.split(":").map(Number)
@@ -5647,6 +5647,20 @@ function applyCurrentAdjustmentEvent(force = false, instant = true) {
         console.log("Adjusting brightness automatically", foundEvent)
         lastTimeEvent = Object.assign({}, foundEvent)
         lastTimeEvent.day = new Date().getDate()
+
+        // Apply weather brightness offset when type is "brightness"
+        if (foundEvent.weatherEnabled && foundEvent.weatherOffsetType === "brightness" && typeof getCloudCover() === "number" && getCloudCover() > foundEvent.weatherCloudThreshold) {
+          const brightnessOffset = parseInt(foundEvent.weatherOffsetBrightness) || 0
+          if (brightnessOffset) {
+            if (foundEvent.monitors && settings.adjustmentTimeIndividualDisplays) {
+              for (const id in foundEvent.monitors) {
+                foundEvent.monitors[id] = Math.max(0, Math.min(100, (parseInt(foundEvent.monitors[id] || 0) + brightnessOffset)))
+              }
+            } else {
+              foundEvent.brightness = Math.max(0, Math.min(100, (parseInt(foundEvent.brightness) || 0) + brightnessOffset))
+            }
+          }
+        }
 
         const applyAdjustment = (readableMonitorIds = false) => {
           if (settings.adjustmentTimeAnimate) {

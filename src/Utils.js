@@ -30,13 +30,13 @@ function pipeSendCommand(type, data, port = 14715, key) {
 
         const client = require('net').connect('\\\\.\\pipe\\twinkle-tray\\cmds')
 
-        client.on('data', function(message) {
+        client.on('data', function (message) {
             resolve(message?.toString())
         })
 
         try {
             client.write(JSON.stringify({ type, data, key }))
-        } catch(e) {
+        } catch (e) {
             reject('Failed to send command:', e)
         }
     })
@@ -145,7 +145,7 @@ module.exports = {
             let displays = {}
             try {
                 displays = JSON.parse(response || "")
-            } catch(e) {
+            } catch (e) {
                 console.log("Error parsing response")
             }
 
@@ -238,6 +238,8 @@ function upgradeAdjustmentTimes(times = []) {
 
     times.forEach(time => {
         if (time.time) {
+            if (time.weatherOffsetType === undefined) time.weatherOffsetType = "time"
+            if (time.weatherOffsetBrightness === undefined) time.weatherOffsetBrightness = 0
             newTimes.push(time)
             return
         }
